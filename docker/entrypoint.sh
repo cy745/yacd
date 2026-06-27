@@ -2,7 +2,7 @@
 # yacd + Mihomo 组合入口
 
 # 允许通过环境变量覆盖后端 API 地址
-# 默认：http://192.168.3.100:9090
+# 默认：http://127.0.0.1:9090
 YACD_DEFAULT_BACKEND="${YACD_DEFAULT_BACKEND:-http://127.0.0.1:9090}"
 sed -i "s|http://[^/]*:9090|$YACD_DEFAULT_BACKEND|" /usr/share/nginx/html/index.html
 
