@@ -84,12 +84,54 @@ export async function getSubscription() {
 export async function fetchSubscribe(url) {
   console.log(`Fetching subscription: ${url}`);
 
+  // 解析订阅域名的真实 IP，注入 IP-CIDR 直连规则
+  // TUN 模式会劫持所有流量，必须用 IP 规则确保直连
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+
+    // DNS 解析获取订阅服务器的真实 IP
+    const { execSync } = await import('node:child_process');
+    const digOutput = execSync(
+      `nslookup ${domain} 2>/dev/null || host ${domain} 2>/dev/null || echo ""`,
+      { timeout: 5000, encoding: 'utf-8' }
+    );
+
+    // 从输出中提取 IPv4 地址
+    const ipv4Regex = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+    const ipMatches = digOutput.match(ipv4Regex) || [];
+
+    const config = await readYaml(CONFIG_PATH);
+    if (config && Array.isArray(config.rules) && ipMatches.length > 0) {
+      const uniqueIPs = [...new Set(ipMatches)].filter(
+        (ip) => !ip.startsWith('127.') && !ip.startsWith('10.') &&
+               !ip.startsWith('192.168.') && !ip.startsWith('198.18.')
+      );
+      let addedCount = 0;
+      for (const ip of uniqueIPs) {
+        const rule = `IP-CIDR,${ip}/32,DIRECT`;
+        if (!config.rules.includes(rule)) {
+          config.rules.unshift(rule);
+          addedCount++;
+        }
+      }
+      if (addedCount > 0) {
+        await writeYaml(CONFIG_PATH, config);
+        await reloadMihomo();
+        console.log(`Added ${addedCount} IP DIRECT rules for ${domain}: ${uniqueIPs.join(', ')}`);
+      }
+    }
+  } catch (err) {
+    console.warn('Could not inject IP DIRECT rules (non-fatal):', err.message);
+  }
+
+  // 抓取订阅
   const response = await fetch(url, {
     headers: {
       'User-Agent': 'yacd-server/1.0',
       Accept: 'application/yaml, text/plain, */*',
     },
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!response.ok) {
@@ -141,6 +183,20 @@ export async function applySubscription(isSubscribe = false) {
   // 深拷贝，避免修改原始对象
   const merged = JSON.parse(JSON.stringify(config));
 
+  // 根据元数据中的订阅 URL 注入域名直连规则
+  try {
+    const meta = await readMeta();
+    if (meta?.url) {
+      const urlObj = new URL(meta.url);
+      const parts = urlObj.hostname.split('.');
+      const rootDomain = parts.length > 2 ? parts.slice(-2).join('.') : urlObj.hostname;
+      const directRule = `DOMAIN-KEYWORD,${rootDomain},DIRECT`;
+      if (Array.isArray(merged.rules) && !merged.rules.includes(directRule)) {
+        merged.rules.unshift(directRule);
+      }
+    }
+  } catch (_) { /* non-fatal */ }
+
   // 检查订阅是否有需要合并的字段
   let mergedCount = 0;
   for (const field of SUBSCRIPTION_FIELDS) {
@@ -149,6 +205,28 @@ export async function applySubscription(isSubscribe = false) {
       mergedCount++;
     }
   }
+
+  // 在合并后补回订阅域名的 IP 直连规则（确保下次更新能直连）
+  try {
+    const meta = await readMeta();
+    if (meta?.url && Array.isArray(merged.rules)) {
+      const urlObj = new URL(meta.url);
+      const domain = urlObj.hostname;
+      const { execSync } = await import('node:child_process');
+      const digOutput = execSync(`nslookup ${domain} 2>/dev/null || host ${domain} 2>/dev/null || echo ""`, { timeout: 5000, encoding: 'utf-8' });
+      const ipv4Regex = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+      const ipMatches = digOutput.match(ipv4Regex) || [];
+      const uniqueIPs = [...new Set(ipMatches)].filter(
+        (ip) => !ip.startsWith('127.') && !ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('198.18.')
+      );
+      for (const ip of uniqueIPs) {
+        const rule = `IP-CIDR,${ip}/32,DIRECT`;
+        if (!merged.rules.includes(rule)) {
+          merged.rules.unshift(rule);
+        }
+      }
+    }
+  } catch (_) { /* non-fatal */ }
 
   // 写入 config.yaml
   await writeYaml(CONFIG_PATH, merged);
@@ -169,8 +247,8 @@ export async function applySubscription(isSubscribe = false) {
 async function reloadMihomo() {
   const target = process.env.MIHOMO_TARGET || 'http://127.0.0.1:9090';
 
+  // 尝试 PUT /configs API 热重载（对规则更新可能有限）
   try {
-    // 读取当前配置并 PUT 到 Mihomo API
     const config = await readYaml(CONFIG_PATH);
     const response = await fetch(`${target}/configs?force=true`, {
       method: 'PUT',
@@ -179,17 +257,35 @@ async function reloadMihomo() {
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`Mihomo reload failed: ${response.status} ${text}`);
+    if (response.ok) {
+      console.log('Mihomo config reloaded via API');
+      // 热重载对规则更新可能无效，等一秒后检查是否生效
+      await new Promise((r) => setTimeout(r, 1000));
+      // 如果不再报错，认为成功
+      return true;
     }
+  } catch (_) {
+    // API reload failed, fall through to restart
+  }
 
-    console.log('Mihomo config reloaded successfully');
+  // Fallback: 通过 Kill + 重启 Mihomo 进程来加载新配置
+  // Express 是前台进程（exec node），不受影响
+  try {
+    console.log('Restarting Mihomo process for config reload...');
+    const { execSync } = await import('node:child_process');
+
+    // 杀掉旧 Mihomo 进程
+    execSync('kill -TERM $(pidof mihomo) 2>/dev/null || kill $(cat /tmp/mihomo.pid 2>/dev/null) 2>/dev/null || true', { stdio: 'ignore' });
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // 重新启动 Mihomo
+    execSync('/mihomo -d /root/.config/mihomo &', { stdio: 'ignore' });
+    await new Promise((r) => setTimeout(r, 2000));
+
+    console.log('Mihomo process restarted');
     return true;
   } catch (err) {
-    // 如果 API reload 失败，回退提示
-    console.error(`Mihomo reload error: ${err.message}`);
-    console.log('Try: docker restart yacd-mihomo');
+    console.error(`Mihomo restart failed: ${err.message}`);
     throw err;
   }
 }

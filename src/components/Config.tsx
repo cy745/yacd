@@ -63,7 +63,6 @@ type ConfigImplProps = {
 };
 
 function Config({ configs }: ConfigImplProps) {
-  const navigate = useNavigate();
   const [latencyTestUrl, setLatencyTestUrl] = useAtom(latencyTestUrlAtom);
   const [selectedChartStyleIndex, setSelectedChartStyleIndex] = useAtom(
     selectedChartStyleIndexAtom,
