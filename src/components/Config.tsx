@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAtom } from 'jotai';
 import * as React from 'react';
-import { LogOut } from 'react-feather';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 
 import { updateConfigs } from '$src/api/configs';
 import * as logsApi from '$src/api/logs';
@@ -17,12 +15,12 @@ import {
 import { useClashConfig } from '$src/store/configs';
 import { ClashGeneralConfig } from '$src/store/types';
 
-import Button from './Button';
 import s0 from './Config.module.scss';
 import { ContentHeader } from './ContentHeader';
 import { ToggleInput } from './form/Toggle';
 import Input, { SelfControlledInput } from './Input';
 import { Selection2 } from './Selection';
+import SubscriptionManager from './SubscriptionManager';
 import TrafficChartSample from './TrafficChartSample';
 
 const { useEffect, useState, useCallback, useRef, useMemo } = React;
@@ -251,18 +249,6 @@ function Config({ configs }: ConfigImplProps) {
             onChange={(v: string) => setSelectedChartStyleIndex(parseInt(v, 10))}
           />
         </div>
-        <div>
-          <div className={s0.label}>
-            {t('current_backend')}
-            <p>{apiConfig.baseURL}</p>
-          </div>
-          <div className={s0.label}>Action</div>
-          <Button
-            start={<LogOut size={16} />}
-            label={t('switch_backend')}
-            onClick={() => navigate('/backend')}
-          />
-        </div>
         <div className={s0.item}>
           <ToggleInput
             id="dark-mode-pure-black-toggle"
@@ -274,6 +260,12 @@ function Config({ configs }: ConfigImplProps) {
           </label>
         </div>
       </div>
+
+      <div className={s0.sep}>
+        <div />
+      </div>
+
+      <SubscriptionManager />
     </div>
   );
 }

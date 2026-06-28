@@ -57,6 +57,16 @@ app.get('/api/subscription', async (_req, res) => {
   }
 });
 
+// GET /api/config — read full config.yaml
+app.get('/api/config/read', async (_req, res) => {
+  try {
+    const raw = await cfg.getConfigRaw();
+    res.type('yaml').send(raw);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/subscribe', async (req, res) => {
   try {
     const { url } = req.body;

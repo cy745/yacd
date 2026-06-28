@@ -8,6 +8,7 @@ import * as yaml from 'js-yaml';
 const MIHOMO_DIR = '/root/.config/mihomo';
 const CONFIG_PATH = path.join(MIHOMO_DIR, 'config.yaml');
 const SUBSCRIPTION_PATH = path.join(MIHOMO_DIR, 'subscription.yaml');
+const META_PATH = path.join(MIHOMO_DIR, 'subscription-meta.json');
 
 // 从订阅中提取的字段（合并时只替换这些）
 const SUBSCRIPTION_FIELDS = ['proxies', 'proxy-groups', 'rules', 'rule-providers'];
@@ -29,6 +30,20 @@ async function writeYaml(filePath, data) {
   await fs.writeFile(filePath, raw, 'utf-8');
 }
 
+async function readMeta() {
+  try {
+    const raw = await fs.readFile(META_PATH, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+async function writeMeta(data) {
+  await fs.writeFile(META_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
+
 // ── 配置读取 ─────────────────────────────────────────────────
 
 export async function getConfig() {
@@ -36,18 +51,29 @@ export async function getConfig() {
   return config || {};
 }
 
+export async function getConfigRaw() {
+  try {
+    return await fs.readFile(CONFIG_PATH, 'utf-8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
 export async function getSubscription() {
   const sub = await readYaml(SUBSCRIPTION_PATH);
   if (!sub) return null;
 
-  // 提取元信息
+  const meta = await readMeta();
   const proxies = sub.proxies || [];
   const groups = sub['proxy-groups'] || [];
   return {
+    imported: true,
+    url: meta?.url || null,
+    updatedAt: meta?.updatedAt || null,
     proxiesCount: proxies.length,
     groupsCount: groups.length,
     fields: SUBSCRIPTION_FIELDS.filter((f) => f in sub),
-    // 返回节点的名称列表（不包含完整节点信息，保护订阅内容）
     proxyNames: proxies.map((p) => p.name),
     groupNames: groups.map((g) => g.name),
   };
@@ -86,6 +112,7 @@ export async function fetchSubscribe(url) {
 
   // 保存完整订阅内容
   await writeYaml(SUBSCRIPTION_PATH, parsed);
+  await writeMeta({ url, updatedAt: new Date().toISOString() });
   console.log(`Subscription saved: ${Object.keys(parsed).length} top-level keys`);
 
   // 合并到 config.yaml
