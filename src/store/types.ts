@@ -1,11 +1,6 @@
-import type { ClashAPIConfig } from 'src/types';
-
 export type ThemeType = 'dark' | 'light' | 'auto';
 
 export type StateApp = {
-  selectedClashAPIConfigIndex: number;
-  clashAPIConfigs: ClashAPIConfig[];
-
   latencyTestUrl: string;
   selectedChartStyleIndex: number;
   theme: ThemeType;

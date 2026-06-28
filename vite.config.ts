@@ -49,6 +49,21 @@ export default defineConfig(async ({ mode }) => {
         base: './',
       }),
     ],
+    server: {
+      proxy: {
+        // Dev mode: proxy API/WS requests directly to Mihomo
+        // For custom /api/* endpoints, run Express alongside: pnpm server:dev
+        '/api': { target: 'http://127.0.0.1:3001', changeOrigin: true },
+        '/proxies': { target: 'http://127.0.0.1:9090', changeOrigin: true },
+        '/configs': { target: 'http://127.0.0.1:9090', changeOrigin: true },
+        '/rules': { target: 'http://127.0.0.1:9090', changeOrigin: true },
+        '/version': { target: 'http://127.0.0.1:9090', changeOrigin: true },
+        '/providers': { target: 'http://127.0.0.1:9090', changeOrigin: true },
+        '/logs': { target: 'http://127.0.0.1:9090', ws: true },
+        '/connections': { target: 'http://127.0.0.1:9090', ws: true },
+        '/traffic': { target: 'http://127.0.0.1:9090', ws: true },
+      },
+    },
   }
 });
 

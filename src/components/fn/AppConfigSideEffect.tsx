@@ -5,14 +5,12 @@ import { saveState } from '$src/misc/storage';
 import { throttle } from '$src/misc/utils';
 import {
   autoCloseOldConnsAtom,
-  clashAPIConfigsAtom,
   collapsibleIsOpenAtom,
   hideUnavailableProxiesAtom,
   latencyTestUrlAtom,
   logStreamingPausedAtom,
   proxySortByAtom,
   selectedChartStyleIndexAtom,
-  selectedClashAPIConfigIndexAtom,
   themeAtom,
 } from '$src/store/app';
 import { StateApp } from '$src/store/types';
@@ -26,8 +24,6 @@ function save0() {
 const save = throttle(save0, 500);
 
 export function AppConfigSideEffect() {
-  const [selectedClashAPIConfigIndex] = useAtom(selectedClashAPIConfigIndexAtom);
-  const [clashAPIConfigs] = useAtom(clashAPIConfigsAtom);
   const [latencyTestUrl] = useAtom(latencyTestUrlAtom);
   const [selectedChartStyleIndex] = useAtom(selectedChartStyleIndexAtom);
   const [theme] = useAtom(themeAtom);
@@ -39,27 +35,23 @@ export function AppConfigSideEffect() {
   useEffect(() => {
     stateRef = {
       autoCloseOldConns,
-      clashAPIConfigs,
       collapsibleIsOpen,
       hideUnavailableProxies,
       latencyTestUrl,
       logStreamingPaused,
       proxySortBy,
       selectedChartStyleIndex,
-      selectedClashAPIConfigIndex,
       theme,
     };
     save();
   }, [
     autoCloseOldConns,
-    clashAPIConfigs,
     collapsibleIsOpen,
     hideUnavailableProxies,
     latencyTestUrl,
     logStreamingPaused,
     proxySortBy,
     selectedChartStyleIndex,
-    selectedClashAPIConfigIndex,
     theme,
   ]);
   return null;

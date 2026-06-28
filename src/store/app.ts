@@ -1,8 +1,8 @@
 import { atom, useAtom } from 'jotai';
 import { atomWithStorage } from 'jotai/utils';
+import { useMemo } from 'react';
 
 import { loadState } from '$src/misc/storage';
-import { trimTrailingSlash } from '$src/misc/utils';
 import { StateApp, ThemeType } from '$src/store/types';
 import { ClashAPIConfig } from '$src/types';
 
@@ -14,16 +14,7 @@ const STORAGE_KEY = {
 
 const rootEl = document.querySelector('html');
 
-const defaultClashAPIConfig = {
-  baseURL: document.getElementById('app')?.getAttribute('data-base-url') ?? 'http://127.0.0.1:9090',
-  secret: '',
-  addedAt: 0,
-};
-
 const defaultState: StateApp = {
-  selectedClashAPIConfigIndex: 0,
-  clashAPIConfigs: [defaultClashAPIConfig],
-
   latencyTestUrl: 'http://www.gstatic.com/generate_204',
   selectedChartStyleIndex: 0,
   theme: 'dark',
@@ -37,12 +28,8 @@ const defaultState: StateApp = {
   logStreamingPaused: false,
 };
 
-const CONFIG_QUERY_PARAMS = ['hostname', 'port', 'secret', 'theme'];
-
 // atoms
 
-export const selectedClashAPIConfigIndexAtom = atom(initialState().selectedClashAPIConfigIndex);
-export const clashAPIConfigsAtom = atom(initialState().clashAPIConfigs);
 export const latencyTestUrlAtom = atom(initialState().latencyTestUrl);
 export const selectedChartStyleIndexAtom = atom(initialState().selectedChartStyleIndex);
 export const themeAtom = atom(initialState().theme);
@@ -57,23 +44,14 @@ export const darkModePureBlackToggleAtom = atomWithStorage(STORAGE_KEY.darkModeP
 
 // hooks
 
-export function useApiConfig() {
-  const [apiConfigs] = useAtom(clashAPIConfigsAtom);
-  const [idx] = useAtom(selectedClashAPIConfigIndexAtom);
-  return apiConfigs[idx];
-}
+const API_CONFIG: ClashAPIConfig = {
+  baseURL: window.location.origin,
+  secret: '',
+};
 
-export function findClashAPIConfigIndex(arr: ClashAPIConfig[], needle: ClashAPIConfig) {
-  for (let i = 0; i < arr.length; i++) {
-    const x = arr[i];
-    if (
-      x.baseURL === needle.baseURL &&
-      x.secret === needle.secret &&
-      x.metaLabel === needle.metaLabel
-    ) {
-      return i;
-    }
-  }
+export function useApiConfig(): ClashAPIConfig {
+  const ref = useMemo(() => API_CONFIG, []);
+  return ref;
 }
 
 function insertThemeColorMeta(color: string, media?: string) {
@@ -126,60 +104,13 @@ export function setTheme(theme: ThemeType = 'dark') {
   updateMetaThemeColor(theme);
 }
 
-function parseConfigQueryString() {
-  const { search } = window.location;
-  const collector: Record<string, string> = {};
-  const sp = new URLSearchParams(search);
-  let shouldUpdateAddressBar = false;
-  if (typeof search !== 'string' || search === '') {
-    return [collector, sp, shouldUpdateAddressBar] as const;
-  }
-  for (const key of CONFIG_QUERY_PARAMS) {
-    const v = sp.get(key);
-    if (v) {
-      shouldUpdateAddressBar = true;
-      collector[key] = v;
-      // sp can contain secret etc. and we better remove these
-      sp.delete(key);
-    }
-  }
-  return [collector, sp, shouldUpdateAddressBar] as const;
-}
-
 export function initialState(): StateApp {
   if (iState) return iState;
 
   let s = loadState();
   s = { ...defaultState, ...s };
-  const [query, sp, shouldUpdateAddressBar] = parseConfigQueryString();
-  if (shouldUpdateAddressBar && history?.replaceState) {
-    const target = location.pathname + location.hash + (sp.size > 0 ? `?${sp}` : '');
-    history.replaceState(null, '', target);
-  }
-  const conf = s.clashAPIConfigs[s.selectedClashAPIConfigIndex];
-  if (conf) {
-    const url = new URL(conf.baseURL);
-    if (query.hostname) {
-      if (query.hostname.indexOf('http') === 0) {
-        url.href = decodeURIComponent(query.hostname);
-      } else {
-        url.hostname = query.hostname;
-      }
-    }
-    if (query.port) {
-      url.port = query.port;
-    }
-    // url.href is a stringifier and it appends a trailing slash
-    // that is not we want
-    conf.baseURL = trimTrailingSlash(url.href);
-    if (query.secret) {
-      conf.secret = query.secret;
-    }
-  }
 
-  if (query.theme === 'dark' || query.theme === 'light') {
-    s.theme = query.theme;
-  }
+  s.theme = s.theme || 'dark';
   // set initial theme
   setTheme(s.theme);
 

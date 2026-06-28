@@ -1,40 +1,30 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import type { FallbackProps } from 'react-error-boundary';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 
 import { SimplifiedResponse } from '$src/api/fetch';
 import { FetchCtx } from '$src/types';
 
-import Button from '../Button';
 import { Sep } from '../shared/Basic';
 import { ErrorFallbackLayout } from './ErrorFallbackLayout';
-
-function useStuff(resetErrorBoundary: FallbackProps['resetErrorBoundary']) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const onClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      resetErrorBoundary();
-      navigate('/backend');
-    },
-    [navigate, resetErrorBoundary],
-  );
-  return { t, onClick };
-}
 
 export function FetchNetworkErrorFallback(props: {
   ctx: FetchCtx;
   resetErrorBoundary: FallbackProps['resetErrorBoundary'];
 }) {
-  const { resetErrorBoundary, ctx } = props;
-  const { t, onClick } = useStuff(resetErrorBoundary);
+  const { resetErrorBoundary } = props;
   return (
     <ErrorFallbackLayout>
-      <p>Failed to connect to the backend {ctx.apiConfig.baseURL}</p>
+      <p>无法连接到后端服务 (Mihomo API)</p>
+      <p className="text-sm opacity-60">
+        请确认 Mihomo 已在运行，且 API 端口可访问
+      </p>
       <Sep />
-      <Button onClick={onClick}>{t('switch_backend')}</Button>
+      <button
+        className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors cursor-pointer"
+        onClick={resetErrorBoundary}
+      >
+        重试
+      </button>
     </ErrorFallbackLayout>
   );
 }
@@ -43,18 +33,20 @@ export function BackendUnauthorizedErrorFallback(props: {
   ctx: FetchCtx;
   resetErrorBoundary: FallbackProps['resetErrorBoundary'];
 }) {
-  const { resetErrorBoundary, ctx } = props;
-  const { t, onClick } = useStuff(resetErrorBoundary);
+  const { resetErrorBoundary } = props;
   return (
     <ErrorFallbackLayout>
-      <p>Unauthorized to connect to the backend {ctx.apiConfig.baseURL}</p>
-      {ctx.apiConfig.secret ? (
-        <p>You might using a wrong secret</p>
-      ) : (
-        <p>You probably need to provide a secret</p>
-      )}
+      <p>后端认证失败</p>
+      <p className="text-sm opacity-60">
+        Mihomo API 可能需要配置 secret，请检查 config.yaml 中的设置
+      </p>
       <Sep />
-      <Button onClick={onClick}>{t('switch_backend')}</Button>
+      <button
+        className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors cursor-pointer"
+        onClick={resetErrorBoundary}
+      >
+        重试
+      </button>
     </ErrorFallbackLayout>
   );
 }
@@ -64,18 +56,22 @@ export function BackendGeneralErrorFallback(props: {
   resetErrorBoundary: FallbackProps['resetErrorBoundary'];
 }) {
   const { resetErrorBoundary, ctx } = props;
-  const { t, onClick } = useStuff(resetErrorBoundary);
   const { response } = ctx;
   return (
     <ErrorFallbackLayout>
-      <p>Unexpected response from the backend {ctx.apiConfig.baseURL}</p>
+      <p>后端返回了异常的响应</p>
       <Sep />
-      <Button onClick={onClick}>{t('switch_backend')}</Button>
+      <button
+        className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors cursor-pointer"
+        onClick={resetErrorBoundary}
+      >
+        重试
+      </button>
       <Sep />
       <div className="text-left mx-auto" style={{ maxWidth: 800 }}>
-        <h3 className="font-bold my-2 sm:truncate sm:text-m">Response Status</h3>
+        <h3 className="font-bold my-2 sm:truncate sm:text-m">响应状态</h3>
         <p>{response.status}</p>
-        <h3 className="font-bold my-2 sm:truncate sm:text-m">Response Headers</h3>
+        <h3 className="font-bold my-2 sm:truncate sm:text-m">响应头</h3>
         <ul>
           {response.headers.map((h) => {
             return <li key={h}>{h}</li>;
@@ -83,7 +79,7 @@ export function BackendGeneralErrorFallback(props: {
         </ul>
         {response.data ? (
           <>
-            <h3 className="font-bold my-2 sm:truncate sm:text-m">Response Body</h3>
+            <h3 className="font-bold my-2 sm:truncate sm:text-m">响应体</h3>
             <pre>{response.data}</pre>
           </>
         ) : null}

@@ -18,7 +18,6 @@ import { ENDPOINT } from '$src/misc/constants';
 import { darkModePureBlackToggleAtom } from '$src/store/app';
 
 import { actions, initialState } from '../store';
-import { Backend } from './backend/Backend';
 import { MutableConnRefCtx } from './conns/ConnCtx';
 import { ErrorFallback } from './error/ErrorFallback';
 import { BackendBeacon } from './fn/BackendBeacon';
@@ -59,7 +58,7 @@ function RouteInnerApp() {
   return useRoutes(routes);
 }
 
-function SideBarApp() {
+function App() {
   return (
     <div className={s0.app}>
       <BackendBeacon />
@@ -71,13 +70,6 @@ function SideBarApp() {
       </div>
     </div>
   );
-}
-
-function App() {
-  return useRoutes([
-    { path: '/backend', element: <Backend /> },
-    { path: '*', element: <SideBarApp /> },
-  ]);
 }
 
 function AppShell({ children }: { children: React.ReactNode }) {
