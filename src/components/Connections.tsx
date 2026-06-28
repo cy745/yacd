@@ -144,7 +144,8 @@ export default function Conn() {
   const prevConnsRef = useRef(conns);
   const connCtx = React.useContext(MutableConnRefCtx);
   const read = useCallback(
-    ({ connections }: { connections: ConnectionItem[] }) => {
+    (data: { connections?: ConnectionItem[] | null }) => {
+      const connections = data.connections || [];
       const prevConnsKv = arrayToIdKv(prevConnsRef.current);
       const now = Date.now();
       const x = connections.map((c) => fmtConnItem(c, prevConnsKv, now, connCtx));

@@ -83,11 +83,15 @@ yacd-mihomo:latest
 ### 容器启动
 
 ```bash
+# 创建配置卷（持久化 Mihomo 配置）
+docker volume create mihomo-config
+
+# 启动容器
 docker run -d --name yacd-mihomo \
   --network macnet --ip 192.168.3.100 \
   --cap-add NET_ADMIN --cap-add NET_RAW \
   --device /dev/net/tun:/dev/net/tun \
-  -v /path/to/config.yaml:/root/.config/mihomo/config.yaml:ro \
+  -v mihomo-config:/root/.config/mihomo \
   -e MIHOMO_TARGET=http://127.0.0.1:9090 \
   yacd-mihomo:latest
 ```

@@ -2,15 +2,11 @@
 # yacd + Mihomo 组合入口 (Express 全栈)
 
 # 启动 Mihomo（后台）
-if [ -f /root/.config/mihomo/config.yaml ]; then
-    echo "启动 Mihomo..."
-    /mihomo -d /root/.config/mihomo &
-    MIHOMO_PID=$!
-    echo "Mihomo PID: $MIHOMO_PID"
-else
-    echo "警告: 未找到配置文件 /root/.config/mihomo/config.yaml，Mihomo 未启动"
-    MIHOMO_PID=""
-fi
+# Mihomo 会自动创建初始配置（如果 config.yaml 不存在）
+echo "启动 Mihomo..."
+/mihomo -d /root/.config/mihomo &
+MIHOMO_PID=$!
+echo "Mihomo PID: $MIHOMO_PID"
 
 # 启动 Express（前台，接管容器生命周期）
 echo "启动 yacd-server (Express)..."
