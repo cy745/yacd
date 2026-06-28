@@ -5,6 +5,7 @@
   "private": true,
   "dependencies": {
     "express": "^5.2.1",
-    "http-proxy-middleware": "^4.1.1"
+    "http-proxy-middleware": "^4.1.1",
+    "js-yaml": "^5.2.0"
   }
 }

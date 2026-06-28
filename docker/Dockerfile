@@ -11,7 +11,7 @@ COPY public /app/public
 
 # 复制 Express 服务器并安装依赖
 COPY server/package.json /app/package.json
-COPY server/index.js /app/server/index.js
+COPY server/ /app/server/
 RUN cd /app && npm install --production
 
 # 复制入口脚本
