@@ -1,5 +1,6 @@
 // pretty-bytes 纯函数单测(无 DOM,秒级)
-import { describe, it, expect } from 'vitest';
+import { describe, expect,it } from 'vitest';
+
 import prettyBytes from '../pretty-bytes';
 
 describe('prettyBytes', () => {

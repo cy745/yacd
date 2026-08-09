@@ -21,6 +21,11 @@ set -euo pipefail
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]:-$0}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
+# 权限自愈:源码 tarball 解压可能丢可执行位,每次运行确保自身与子命令可执行
+if [ ! -x "$SCRIPT_PATH" ] || [ -n "$(find "$SCRIPT_DIR/cmd" "$SCRIPT_DIR/lib" -name '*.sh' ! -perm -u+x -print -quit 2>/dev/null)" ]; then
+  chmod +x "$SCRIPT_PATH" "$SCRIPT_DIR"/cmd/*.sh "$SCRIPT_DIR"/lib/*.sh "$SCRIPT_DIR/install.sh" 2>/dev/null || true
+fi
+
 # 读取版本(仅用于帮助文案;不 source utils.sh,避免 docker 探测等副作用)
 if [ -f "$SCRIPT_DIR/VERSION" ]; then
   YACD_VERSION="$(cat "$SCRIPT_DIR/VERSION" 2>/dev/null || echo dev)"

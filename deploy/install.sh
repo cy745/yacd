@@ -93,6 +93,11 @@ else
 fi
 rm -f "$TMP_TAR"
 
+# 确保脚本可执行(源码 tarball 可能丢可执行位)
+chmod +x "$INSTALL_DIR/deploy/manage.sh" "$INSTALL_DIR/deploy/install.sh" \
+  "$INSTALL_DIR"/deploy/cmd/*.sh "$INSTALL_DIR"/deploy/lib/*.sh \
+  "$INSTALL_DIR/docker/entrypoint.sh" 2>/dev/null || true
+
 # ── .env:不存在则从模板复制 ───────────────────────────────────────────────
 if [ ! -f "$INSTALL_DIR/deploy/.env" ]; then
   cp "$INSTALL_DIR/deploy/.env.example" "$INSTALL_DIR/deploy/.env"
