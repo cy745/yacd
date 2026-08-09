@@ -16,6 +16,10 @@ UTILS_PATH="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE
 DEPLOY_DIR="$(cd "$(dirname "$UTILS_PATH")/.." && pwd)"
 REPO_DIR="$(cd "$DEPLOY_DIR/.." && pwd)"
 
+# 关键:切换到 deploy/ 目录,使 docker compose 能定位 docker-compose.yml
+# (compose 依赖 cwd 查找配置;否则从任意目录调用会报 "no configuration file provided")
+cd "$DEPLOY_DIR"
+
 # ── 环境变量加载(.env,自动剔除 CRLF) ─────────────────────────────────────
 load_env() {
   if [ -f "$DEPLOY_DIR/.env" ]; then
