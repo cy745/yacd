@@ -9,6 +9,8 @@
 FROM metacubex/mihomo:v1.19.29
 
 # 安装 Node.js + npm(--update 刷新索引,基础镜像无 APKINDEX 缓存)
+# 注:DL3018(apk 锁版本)已在 CI hadolint 中忽略,Alpine 包版本跟随发行版,
+#     硬 pin 会导致镜像构建脆弱。
 RUN apk add --update --no-cache nodejs npm
 
 # ── Express 后端依赖(独立最小清单,避免把前端依赖装进镜像) ──
