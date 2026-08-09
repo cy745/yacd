@@ -57,17 +57,26 @@ echo "=============================================="
 if [ "${YACD_USE_MAIN:-0}" = "1" ]; then
   echo "[1/4] 从 main 分支拉取源码..."
   TMP_TAR="$(mktemp -t yacd-main.XXXXXX.tar.gz)"
-  curl -fsSL -o "$TMP_TAR" "$RAW_BASE/main/deploy/yacd-release.tar.gz" \
-    || curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/main"
+  curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/main" \
+    || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
 else
   echo "[1/4] 解析最新 release..."
-  LATEST_TAG="$(curl -fsSL "$API_BASE/releases/latest" | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"//')"
-  [ -z "$LATEST_TAG" ] && { echo "错误:无法解析最新 release tag" >&2; exit 1; }
-  echo "  最新版本: $LATEST_TAG"
+  LATEST_TAG="$(curl -fsSL "$API_BASE/releases/latest" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"//')"
   TMP_TAR="$(mktemp -t yacd.XXXXXX.tar.gz)"
-  echo "[2/4] 下载 release 资产..."
-  curl -fsSL -o "$TMP_TAR" "$RAW_BASE/$LATEST_TAG/deploy/yacd-release.tar.gz" \
-    || curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/tags/$LATEST_TAG"
+  if [ -n "$LATEST_TAG" ]; then
+    echo "  最新版本: $LATEST_TAG"
+    echo "[2/4] 下载 release 资产..."
+    if ! curl -fsSL -o "$TMP_TAR" "$RAW_BASE/$LATEST_TAG/deploy/yacd-release.tar.gz" 2>/dev/null; then
+      echo "  (release 资产未发布,回退源码 tarball)"
+      curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/tags/$LATEST_TAG" \
+        || { echo "错误:下载失败" >&2; exit 1; }
+    fi
+  else
+    # 尚无 release(首次安装):降级到 main 分支源码,保证 curl|sh 可用
+    echo "  (暂无 release,降级到 main 分支源码)"
+    curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/main" \
+      || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
+  fi
 fi
 
 # ── 解压安装 ───────────────────────────────────────────────────────────────
@@ -113,3 +122,15 @@ echo "  命令:  yacd <命令>(如 yacd up / yacd status / yacd logs)"
 echo "  帮助:  yacd help"
 echo "  首次使用: 编辑 $INSTALL_DIR/deploy/.env 后运行 yacd up"
 echo ""
+
+# 前端产物检查:源码 tarball 不含 public/ 需提示
+if [ ! -f "$INSTALL_DIR/public/index.html" ]; then
+  echo "──────────────────────────────────────────────"
+  echo "⚠️  未检测到前端构建产物 (public/index.html)"
+  echo "  方式一:本地构建后上传"
+  echo "    pnpm install && pnpm build"
+  echo "    scp -r public/ <user>@<nas>:$INSTALL_DIR/"
+  echo "  方式二:等 release 发布后重新运行 yacd install"
+  echo "    (release 资产会包含构建好的 public/)"
+  echo "──────────────────────────────────────────────"
+fi

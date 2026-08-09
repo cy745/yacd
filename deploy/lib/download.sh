@@ -20,23 +20,25 @@ fetch_latest_tag() {
 
 # 下载 release 资产(yacd-release.tar.gz)或 main 分支的打包版本到指定路径
 # 参数:$1 = 输出文件路径;可选 YACD_USE_MAIN=1 强制用 main 分支
+# 若 release 资产不存在(首次发布前),自动 fallback 到 GitHub 源码 tarball
 download_release() {
   local out="$1"
-  local url
+  local tag="" url_assets url_fallback
   if [ "${YACD_USE_MAIN:-0}" = "1" ]; then
-    # main 分支:直接抓 deploy 目录打好的包(本地/CI 构建时产出)
-    url="$RAW_BASE/main/deploy/yacd-release.tar.gz"
-    info "从 main 分支下载: $url"
+    url_assets="$RAW_BASE/main/deploy/yacd-release.tar.gz"
+    url_fallback="https://codeload.github.com/$REPO/tar.gz/refs/heads/main"
+    info "从 main 分支拉取: $url_assets"
   else
-    local tag
     tag="$(fetch_latest_tag)"
     [ -z "$tag" ] && { err "无法解析最新 release tag"; return 1; }
-    # 优先尝试 release 资产;fallback 到 GitHub 自动生成的 source tarball
-    url="$RAW_BASE/$tag/deploy/yacd-release.tar.gz"
-    info "从 release $tag 下载: $url"
+    url_assets="$RAW_BASE/$tag/deploy/yacd-release.tar.gz"
+    url_fallback="https://codeload.github.com/$REPO/tar.gz/refs/tags/$tag"
+    info "从 release $tag 拉取: $url_assets"
   fi
-  curl -fsSL -o "$out" "$url" 2>/dev/null \
-    || return 1
+  if ! curl -fsSL -o "$out" "$url_assets" 2>/dev/null; then
+    warn "release 资产不存在(可能尚未发布),回退到源码 tarball: $url_fallback"
+    curl -fsSL -o "$out" "$url_fallback" 2>/dev/null || { err "下载失败"; return 1; }
+  fi
   ok "下载完成: $(du -h "$out" 2>/dev/null | cut -f1)"
 }
 
@@ -46,11 +48,12 @@ extract_release() {
   mkdir -p "$dest"
   if command -v tar >/dev/null 2>&1; then
     # release 包解压后即 deploy/docker/server/public/VERSION 等,无外层目录
-    tar -xzf "$tarball" -C "$dest" 2>/dev/null \
+    # 源码 tarball 有 yacd-main/ 顶层目录,用 --strip-components 处理两种情况
+    tar -xzf "$tarball" -C "$dest" --strip-components=1 2>/dev/null \
+      || tar -xzf "$tarball" -C "$dest" 2>/dev/null \
       || { err "解压失败"; return 1; }
   else
     err "未找到 tar"; return 1
   fi
-  # .env 不覆盖:若解压包带 .env.example 而已存在 .env,保留
   ok "已解压到 $dest"
 }
