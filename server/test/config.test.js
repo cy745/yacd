@@ -18,7 +18,7 @@ after(() => {
   delete process.env.MIHOMO_DIR;
 });
 
-const { getConfig, getSubscription, applySubscription } = await import('../config.js');
+const { getConfig, getSubscription, applySubscription, setSubscriptionProxy } = await import('../config.js');
 const CFG = join(tmpDir, 'config.yaml');
 const SUB = join(tmpDir, 'subscription.yaml');
 
@@ -70,4 +70,55 @@ test('getSubscription 无订阅时返回 null', async () => {
   rmSync(SUB, { force: true });
   const sub = await getSubscription();
   assert.equal(sub, null);
+});
+
+test('setSubscriptionProxy 持久化到 meta', async () => {
+  // 先导入订阅(确保 getSubscription 有 meta)
+  writeConfig({ port: 7890, rules: ['MATCH,proxy'] });
+  writeFileSync(SUB, JSON.stringify({
+    proxies: [{ name: '节点A' }],
+    'proxy-groups': [{ name: '订阅更新', type: 'select', proxies: ['节点A'] }],
+    rules: ['MATCH,proxy'],
+  }));
+  await applySubscription();
+
+  // 设置拉取代理
+  const proxy = await setSubscriptionProxy('节点A');
+  assert.equal(proxy, '节点A');
+
+  // getSubscription 应返回它
+  const sub = await getSubscription();
+  assert.equal(sub.proxyForSubscribe, '节点A');
+
+  // 清除
+  await setSubscriptionProxy(null);
+  const sub2 = await getSubscription();
+  assert.equal(sub2.proxyForSubscribe, null);
+});
+
+test('applySubscription 确保订阅域名走目标节点(非 DIRECT)', async () => {
+  writeConfig({
+    port: 7890,
+    rules: ['MATCH,proxy'],
+  });
+  writeFileSync(SUB, JSON.stringify({
+    proxies: [{ name: '订阅专用节点' }],
+    'proxy-groups': [{ name: '订阅更新', type: 'select', proxies: ['订阅专用节点'] }],
+    rules: ['MATCH,proxy'],
+  }));
+  // 设置 meta.url + proxyForSubscribe
+  const { writeFileSync: w } = await import('node:fs');
+  const metaPath = join(tmpDir, 'subscription-meta.json');
+  w(metaPath, JSON.stringify({ url: 'https://example.com/zaapi/sub', proxyForSubscribe: '订阅专用节点' }));
+
+  await applySubscription();
+
+  const cfg = await getConfig();
+  const rules = cfg.rules;
+  // 域名规则指向订阅专用节点,而非 DIRECT
+  const domainRule = rules.find((r) => r.startsWith('DOMAIN-SUFFIX,example.com,'));
+  assert.ok(domainRule, '应存在 example.com 的域名规则');
+  assert.equal(domainRule, 'DOMAIN-SUFFIX,example.com,订阅专用节点');
+  // 不应有 DIRECT 残留
+  assert.ok(!rules.some((r) => r.includes('example.com') && r.includes('DIRECT')), '不应有 DIRECT 残留');
 });

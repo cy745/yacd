@@ -77,59 +77,87 @@ export async function getSubscription() {
     fields: SUBSCRIPTION_FIELDS.filter((f) => f in sub),
     proxyNames: proxies.map((p) => p.name),
     groupNames: groups.map((g) => g.name),
+    proxyForSubscribe: meta?.proxyForSubscribe || null,
   };
+}
+
+// ── 订阅拉取代理选择 ─────────────────────────────────────────
+
+/** 设置订阅拉取使用的节点/策略组名(存于 subscription-meta.json) */
+export async function setSubscriptionProxy(proxy) {
+  const meta = (await readMeta()) || {};
+  meta.proxyForSubscribe = proxy || null;
+  await writeMeta(meta);
+  return meta.proxyForSubscribe;
 }
 
 // ── 订阅抓取 ─────────────────────────────────────────────────
 
+/**
+ * 确保订阅域名的流量走指定节点/策略组(而非 DIRECT 直连)。
+ *
+ * 背景:部分机场的订阅 URL 只有通过其专用节点代理拉取,才会返回完整节点列表;
+ *      直连拉取只返回占位提示节点(如"请连接订阅专用节点并更新订阅")。
+ *
+ * 实现:
+ *  - 目标 = meta.proxyForSubscribe(用户选择的节点/组名),未设置时回退到「订阅更新」组
+ *  - 确保 `DOMAIN-SUFFIX,<订阅域名>,<目标>` 与 `IP-CIDR,<真实IP>/32,<目标>` 规则存在
+ *  - 清理旧的 DIRECT 残留规则(此前版本注入的 `IP-CIDR,...,DIRECT` 与 `DOMAIN-KEYWORD,...,DIRECT`)
+ *
+ * 注意:订阅域名是 IP(如 47.76.218.52)时,走 TUN 后由 mihomo 按 IP-CIDR 规则分流到目标。
+ */
+async function ensureSubscriptionProxyRules(config, url, target) {
+  if (!Array.isArray(config.rules)) return;
+  const urlObj = new URL(url);
+  const host = urlObj.hostname;
+  const rootDomain = host.split('.').slice(-2).join('.');
+  const proxy = target || '订阅更新';
+
+  // 1. 清理旧的 DIRECT 残留(订阅域名相关)
+  const directRules = config.rules.filter(
+    (r) => r.includes(rootDomain) && r.includes('DIRECT'),
+  );
+  if (directRules.length > 0) {
+    config.rules = config.rules.filter((r) => !directRules.includes(r));
+    console.log(`Removed ${directRules.length} stale DIRECT rules for ${rootDomain}`);
+  }
+
+  // 2. 确保域名规则指向目标
+  const domainRule = `DOMAIN-SUFFIX,${rootDomain},${proxy}`;
+  if (!config.rules.includes(domainRule)) {
+    config.rules.unshift(domainRule);
+  }
+
+  // 3. 若 host 是 IP,确保 IP-CIDR 规则指向目标
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    const ipRule = `IP-CIDR,${host}/32,${proxy}`;
+    if (!config.rules.includes(ipRule)) {
+      config.rules.unshift(ipRule);
+    }
+  }
+}
+
 export async function fetchSubscribe(url) {
   console.log(`Fetching subscription: ${url}`);
 
-  // 解析订阅域名的真实 IP，注入 IP-CIDR 直连规则
-  // TUN 模式会劫持所有流量，必须用 IP 规则确保直连
+  // 确保订阅域名走目标节点/组(而非 DIRECT),并清理 DIRECT 残留
   try {
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname;
-
-    // DNS 解析获取订阅服务器的真实 IP
-    const { execSync } = await import('node:child_process');
-    const digOutput = execSync(
-      `nslookup ${domain} 2>/dev/null || host ${domain} 2>/dev/null || echo ""`,
-      { timeout: 5000, encoding: 'utf-8' }
-    );
-
-    // 从输出中提取 IPv4 地址
-    const ipv4Regex = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
-    const ipMatches = digOutput.match(ipv4Regex) || [];
-
-    const config = await readYaml(CONFIG_PATH);
-    if (config && Array.isArray(config.rules) && ipMatches.length > 0) {
-      const uniqueIPs = [...new Set(ipMatches)].filter(
-        (ip) => !ip.startsWith('127.') && !ip.startsWith('10.') &&
-               !ip.startsWith('192.168.') && !ip.startsWith('198.18.')
-      );
-      let addedCount = 0;
-      for (const ip of uniqueIPs) {
-        const rule = `IP-CIDR,${ip}/32,DIRECT`;
-        if (!config.rules.includes(rule)) {
-          config.rules.unshift(rule);
-          addedCount++;
-        }
-      }
-      if (addedCount > 0) {
-        await writeYaml(CONFIG_PATH, config);
-        await reloadMihomo();
-        console.log(`Added ${addedCount} IP DIRECT rules for ${domain}: ${uniqueIPs.join(', ')}`);
-      }
+    const [config, meta] = await Promise.all([readYaml(CONFIG_PATH), readMeta()]);
+    if (config) {
+      await ensureSubscriptionProxyRules(config, url, meta?.proxyForSubscribe || null);
+      await writeYaml(CONFIG_PATH, config);
+      await reloadMihomo();
+      console.log(`Subscription rules ensured for ${new URL(url).hostname}`);
     }
   } catch (err) {
-    console.warn('Could not inject IP DIRECT rules (non-fatal):', err.message);
+    console.warn('Could not ensure subscription proxy rules (non-fatal):', err.message);
   }
 
-  // 抓取订阅
+  // 抓取订阅(走 mihomo TUN,由规则分流到指定节点)
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'yacd-server/1.0',
+      // 真实订阅客户端 UA,部分机场依赖 UA 区分返回内容
+      'User-Agent': 'clash-verge/v2.2.1',
       Accept: 'application/yaml, text/plain, */*',
     },
     signal: AbortSignal.timeout(60000),
@@ -184,20 +212,6 @@ export async function applySubscription(isSubscribe = false) {
   // 深拷贝，避免修改原始对象
   const merged = JSON.parse(JSON.stringify(config));
 
-  // 根据元数据中的订阅 URL 注入域名直连规则
-  try {
-    const meta = await readMeta();
-    if (meta?.url) {
-      const urlObj = new URL(meta.url);
-      const parts = urlObj.hostname.split('.');
-      const rootDomain = parts.length > 2 ? parts.slice(-2).join('.') : urlObj.hostname;
-      const directRule = `DOMAIN-KEYWORD,${rootDomain},DIRECT`;
-      if (Array.isArray(merged.rules) && !merged.rules.includes(directRule)) {
-        merged.rules.unshift(directRule);
-      }
-    }
-  } catch (_) { /* non-fatal */ }
-
   // 检查订阅是否有需要合并的字段
   let mergedCount = 0;
   for (const field of SUBSCRIPTION_FIELDS) {
@@ -207,25 +221,11 @@ export async function applySubscription(isSubscribe = false) {
     }
   }
 
-  // 在合并后补回订阅域名的 IP 直连规则（确保下次更新能直连）
+  // 确保订阅域名走目标节点/组(而非 DIRECT),并清理 DIRECT 残留
   try {
     const meta = await readMeta();
     if (meta?.url && Array.isArray(merged.rules)) {
-      const urlObj = new URL(meta.url);
-      const domain = urlObj.hostname;
-      const { execSync } = await import('node:child_process');
-      const digOutput = execSync(`nslookup ${domain} 2>/dev/null || host ${domain} 2>/dev/null || echo ""`, { timeout: 5000, encoding: 'utf-8' });
-      const ipv4Regex = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
-      const ipMatches = digOutput.match(ipv4Regex) || [];
-      const uniqueIPs = [...new Set(ipMatches)].filter(
-        (ip) => !ip.startsWith('127.') && !ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('198.18.')
-      );
-      for (const ip of uniqueIPs) {
-        const rule = `IP-CIDR,${ip}/32,DIRECT`;
-        if (!merged.rules.includes(rule)) {
-          merged.rules.unshift(rule);
-        }
-      }
+      await ensureSubscriptionProxyRules(merged, meta.url, meta.proxyForSubscribe || null);
     }
   } catch (_) { /* non-fatal */ }
 

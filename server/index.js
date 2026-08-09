@@ -92,6 +92,17 @@ export function createApp() {
     }
   });
 
+  // 设置订阅拉取代理(通过指定节点拉取才能拿到完整订阅)
+  app.post('/api/subscription/proxy', async (req, res) => {
+    try {
+      const { proxy } = req.body;
+      const result = await cfg.setSubscriptionProxy(proxy);
+      res.json({ ok: true, proxy: result || null });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ── 2. Static files (yacd SPA build output) ──────────────────
   app.use(express.static(path.resolve(__dirname, '../public')));
 

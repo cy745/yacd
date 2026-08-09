@@ -1,4 +1,5 @@
 // 订阅管理组件 — 管理订阅 URL、导入、合并、重载
+// 支持选择指定节点代理拉取订阅(部分机场需走专用节点才返回完整节点)
 
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ type SubStatus = {
   proxiesCount?: number;
   groupsCount?: number;
   proxyNames?: string[];
+  proxyForSubscribe?: string | null;
 };
 
 export default function SubscriptionManager() {
@@ -20,6 +22,7 @@ export default function SubscriptionManager() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [viewNodes, setViewNodes] = useState(false);
+  const [proxyForSubscribe, setProxyForSubscribe_] = useState('');
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -27,6 +30,7 @@ export default function SubscriptionManager() {
       const data = await res.json();
       setStatus(data);
       if (data.url) setUrl(data.url);
+      setProxyForSubscribe_(data.proxyForSubscribe || '');
     } catch (err) {
       console.error('Failed to fetch subscription status:', err);
     }
@@ -87,6 +91,26 @@ export default function SubscriptionManager() {
       showMsg('error', `网络错误: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProxyChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setProxyForSubscribe_(value);
+    try {
+      const res = await fetch(`${API_BASE}/api/subscription/proxy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proxy: value || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showMsg('error', data.error || '设置拉取代理失败');
+      } else {
+        showMsg('ok', value ? `订阅拉取将走: ${value}` : '订阅拉取将直连');
+      }
+    } catch (err) {
+      showMsg('error', `网络错误: ${err.message}`);
     }
   };
 
@@ -192,6 +216,42 @@ export default function SubscriptionManager() {
             boxSizing: 'border-box',
           }}
         />
+      </div>
+
+      {/* 订阅拉取代理选择 */}
+      <div style={{ marginBottom: 12 }}>
+        <label
+          htmlFor="subscription-proxy"
+          style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500 }}
+        >
+          订阅拉取方式
+        </label>
+        <select
+          id="subscription-proxy"
+          value={proxyForSubscribe}
+          onChange={handleProxyChange}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            borderRadius: 6,
+            border: '1px solid var(--color-border, #374151)',
+            background: 'var(--color-input-bg, #1e1e2e)',
+            color: 'var(--color-text, #e5e7eb)',
+            fontSize: 14,
+            boxSizing: 'border-box',
+          }}
+        >
+          <option value="">直连(默认)</option>
+          {status?.proxyNames?.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+          部分机场需通过专用节点代理拉取订阅,才能获取完整节点列表
+        </div>
       </div>
 
       {/* 操作按钮 */}
