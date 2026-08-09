@@ -1,0 +1,49 @@
+# mihomo 种子配置(空卷首次启动时拷贝到 /root/.config/mihomo/config.yaml)
+#
+# 这是"最小可启动"配置,目的是让 yacd 面板 + TUN 透明代理开箱可用,
+# 之后通过 yacd 面板导入订阅、生成完整配置。
+#
+# 注意:不含 proxies/proxy-groups(订阅导入后生成)。mihomo 允许空节点列表启动,
+# 此时 TUN/DNS 已就绪,但出站流量无可用节点(所有流量 DIRECT)。
+# 导入订阅后即可正常工作。
+
+mixed-port: 7890
+bind-address: 0.0.0.0       # 允许局域网设备手动配代理 192.168.3.100:7890
+redir-port: 7892
+allow-lan: true
+mode: rule
+log-level: info              # info 级别,Web 日志页面才有显示
+
+# RESTful API(yacd 面板通过 Express 代理访问)
+external-controller: 0.0.0.0:9090
+
+# 透明代理核心:TUN + 自动路由 + DNS 劫持
+tun:
+  enable: true
+  device: mihomo
+  stack: mixed
+  dns-hijack:
+    - any:53
+    - tcp://any:53
+  auto-route: true
+  auto-detect-interface: true
+  strict-route: true
+  mtu: 1500
+
+# DNS:Fake-IP 模式,供 TUN 与局域网设备使用
+dns:
+  enable: true
+  listen: 0.0.0.0:53
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.0/16
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  fallback:
+    - 1.1.1.1
+    - 8.8.8.8
+
+# 空节点列表(订阅导入后由 SUBSCRIPTION_FIELDS 合并替换)
+proxies: []
+proxy-groups: []
+rules: []

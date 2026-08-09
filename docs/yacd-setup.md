@@ -87,9 +87,10 @@ yacd-mihomo:latest
 docker volume create mihomo-config
 
 # 启动容器
+# 注意:--cap-add SYS_ADMIN 是 TUN 模式必需,缺失则虚拟网卡无法创建、流量不经过代理
 docker run -d --name yacd-mihomo \
   --network macnet --ip 192.168.3.100 \
-  --cap-add NET_ADMIN --cap-add NET_RAW \
+  --cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_ADMIN \
   --device /dev/net/tun:/dev/net/tun \
   -v mihomo-config:/root/.config/mihomo \
   -e MIHOMO_TARGET=http://127.0.0.1:9090 \

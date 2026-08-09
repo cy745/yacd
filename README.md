@@ -4,6 +4,21 @@
 
 > Yet Another [Clash](https://github.com/Dreamacro/clash) [Dashboard](https://github.com/Dreamacro/clash-dashboard)
 
+## 本 Fork 的部署方式(NAS 旁路由代理网关)
+
+本仓库已定制为 **yacd + mihomo 组合镜像**,用于在 NAS 上部署旁路由代理网关。
+
+一键部署见 [`deploy/README.md`](deploy/README.md):
+
+```bash
+cd deploy
+cp .env.example .env   # 编辑确认 PARENT_IFACE / SUBNET / MIHOMO_IP
+./manage.sh up         # 一键启动(自动建网/构建/接管旧容器)
+```
+
+架构与原理见 [`docs/mihomo-gateway-network.md`](docs/mihomo-gateway-network.md)。
+以下为上游 yacd 的原始说明,仅作参考。
+
 ## Usage
 
 The site [http://yacd.haishan.me](http://yacd.haishan.me) is served with HTTP not HTTPS is because many browsers block requests to HTTP resources from a HTTPS website. If you think it's not safe, you could just download the [zip of the gh-pages](https://github.com/haishanh/yacd/archive/gh-pages.zip), unzip and serve those static files with a web server(like Nginx).

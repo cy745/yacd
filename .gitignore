@@ -5,6 +5,9 @@
 *.tar.xz
 *.log
 !.github
+# deploy/.env 会被上面的 .* 忽略(正确,含本机 IP 等敏感配置不入库)
+# 但 .env.example 模板需要入库
+!deploy/.env.example
 
 node_modules/
 public/

@@ -1,5 +1,10 @@
 # proxy-gateway 部署指南
 
+> ⚠️ **已废弃**:本文档描述的是 macvlan 挂在 eth0 的旧方案,宿主机无法访问容器。
+> 新的跨物理端口方案(deploy/ 一键部署)见 [mihomo-gateway-network.md](mihomo-gateway-network.md)
+> 与 [deploy/README.md](../deploy/README.md)。
+> 旧的 `docker/deploy.sh` 已删除,由 `deploy/manage.sh` 替代。
+
 ## 架构
 
 ```
@@ -194,7 +199,8 @@ docker restart yacd-mihomo
 
 ## 部署脚本
 
-项目提供了 `docker/deploy.sh`，在 NAS 上运行即可完成构建和部署。
+> 已迁移到 `deploy/manage.sh`(docker compose 方案,见 deploy/README.md)。
+> 本文件第 3-6 节的 `docker run` 命令为历史记录,仅供理解旧架构,不推荐再使用。
 
 ## 已知问题 / 踩坑记录
 

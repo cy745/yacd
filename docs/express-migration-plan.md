@@ -166,6 +166,9 @@ EXPOSE 80 7890 9090
 ENTRYPOINT ["/app/server/entrypoint.sh"]
 ```
 
+> ⚠️ 注:上为迁移计划草案。实际实现见 `docker/Dockerfile` 与 `docker/entrypoint.sh`
+> (entrypoint 位于 `/entrypoint.sh`)。本文件为规划文档,以当前代码为准。
+
 entrypoint.sh:
 ```sh
 #!/bin/sh
