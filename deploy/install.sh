@@ -8,7 +8,7 @@
 #  行为(幂等,重跑即升级):
 #    1. 确定安装目录(INSTALL_DIR):root 默认 /opt/yacd,非 root 默认 ~/.yacd
 #    2. NAS 无 git → 通过 GitHub API 解析最新 release,下载 yacd-release.tar.gz
-#       (若 YACD_USE_MAIN=1 则从 main 分支拉取,方便开发预览)
+#       (若 YACD_USE_MAIN=1 则从 master 分支拉取,方便开发预览)
 #    3. tar 解压到 INSTALL_DIR(幂等覆盖 deploy/docker/server/public/VERSION)
 #    4. .env 不存在则从模板复制;已存在则保留(不覆盖用户配置)
 #    5. 建全局入口:ln -sf $INSTALL_DIR/deploy/manage.sh $PREFIX/bin/yacd
@@ -17,7 +17,7 @@
 #  可覆盖环境变量:
 #    YACD_INSTALL_DIR  安装目录
 #    YACD_PREFIX       bin 所在目录(默认 /usr/local;非 root 用 $HOME/.local)
-#    YACD_USE_MAIN     设为 1 则从 main 分支源码拉取(而非 release 包)
+#    YACD_USE_MAIN     设为 1 则从 master 分支源码拉取(而非 release 包)
 #    YACD_SKIP_LINK    设为 1 则跳过创建 yacd 软链
 # =============================================================================
 
@@ -53,12 +53,12 @@ echo " 安装目录:  $INSTALL_DIR"
 echo " 命令入口:  $BIN_DIR/yacd"
 echo "=============================================="
 
-# ── 下载源选择:release 包 或 main 分支源码 ─────────────────────────────────
+# ── 下载源选择:release 资产 或 master 分支源码 ──────────────────────────────
 if [ "${YACD_USE_MAIN:-0}" = "1" ]; then
-  echo "[1/4] 从 main 分支拉取源码..."
-  TMP_TAR="$(mktemp -t yacd-main.XXXXXX.tar.gz)"
+  echo "[1/4] 从 master 分支拉取源码..."
+  TMP_TAR="$(mktemp -t yacd-master.XXXXXX.tar.gz)"
   curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/master" \
-    || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
+    || { echo "错误:无法从 master 分支下载" >&2; exit 1; }
 else
   echo "[1/4] 解析最新 release..."
   LATEST_TAG="$(curl -fsSL "$API_BASE/releases/latest" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -1 | sed 's/.*: *"//;s/"//')"
@@ -66,16 +66,17 @@ else
   if [ -n "$LATEST_TAG" ]; then
     echo "  最新版本: $LATEST_TAG"
     echo "[2/4] 下载 release 资产..."
-    if ! curl -fsSL -o "$TMP_TAR" "$RAW_BASE/$LATEST_TAG/deploy/yacd-release.tar.gz" 2>/dev/null; then
+    # release 资产是 GitHub Release 附件,从 releases/download 端点下载
+    if ! curl -fsSL -o "$TMP_TAR" "https://github.com/$REPO/releases/download/$LATEST_TAG/yacd-release.tar.gz" 2>/dev/null; then
       echo "  (release 资产未发布,回退源码 tarball)"
       curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/tags/$LATEST_TAG" \
         || { echo "错误:下载失败" >&2; exit 1; }
     fi
   else
-    # 尚无 release(首次安装):降级到 main 分支源码,保证 curl|sh 可用
-    echo "  (暂无 release,降级到 main 分支源码)"
+    # 尚无 release(首次安装):降级到 master 分支源码,保证 curl|sh 可用
+    echo "  (暂无 release,降级到 master 分支源码)"
     curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/master" \
-      || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
+      || { echo "错误:无法从 master 分支下载" >&2; exit 1; }
   fi
 fi
 
