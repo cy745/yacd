@@ -1,0 +1,1 @@
+import{o as e,t}from"./react-B4U2ED-D.js";var{useState:n,useRef:r,useCallback:i,useLayoutEffect:a}=e(t(),1);function o(){let e=r(null),[t,o]=n(200),s=i(()=>{let{top:t}=e.current.getBoundingClientRect();o(window.innerHeight-t)},[]);return a(()=>(s(),window.addEventListener(`resize`,s),()=>{window.removeEventListener(`resize`,s)}),[s]),[e,t]}export{o as t};

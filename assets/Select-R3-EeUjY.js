@@ -1,0 +1,1 @@
+import{t as e}from"./react-B4U2ED-D.js";import{p as t}from"./app-BOpObSoK.js";e();var n={select:`_select_13zm8_1`},r=t();function i({options:e,selected:t,onChange:i}){return(0,r.jsx)(`select`,{className:n.select,value:t,onChange:i,children:e.map(([e,t])=>(0,r.jsx)(`option`,{value:e,children:t},e))})}export{i as t};
