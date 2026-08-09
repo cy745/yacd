@@ -28,7 +28,7 @@ jobs:
           ignore_paths: node_modules
 
       - name: Bats 测试 CLI 派发
-        uses: bats-core/bats-action@2.2.0
+        uses: bats-core/bats-action@2.1.1
         with:
           args: test/manage.bats test/cmd/up.bats
 
@@ -39,14 +39,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v6.0.10
         with:
           version: 8
           run_install: true
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Lint
@@ -74,7 +74,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: 安装依赖
         working-directory: server
