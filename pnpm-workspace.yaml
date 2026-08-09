@@ -1,2 +1,7 @@
+# 单包 workspace:根 package.json 管理前端依赖
+# server/ 与 docs/ 是独立 npm 包(镜像内 / 文档站单独 install),不在此 workspace
+packages:
+  - .
 allowBuilds:
-  '@parcel/watcher': set this to true or false
+  '@parcel/watcher': true
+  esbuild: true
