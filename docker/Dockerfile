@@ -8,8 +8,8 @@
 
 FROM metacubex/mihomo:v1.19.29
 
-# 安装 Node.js + npm(版本约束 ~= 允许小版本更新,避免精确版本过时导致构建失败)
-RUN apk add --no-cache nodejs~=22 npm~=11
+# 安装 Node.js + npm(--update 刷新索引,基础镜像无 APKINDEX 缓存)
+RUN apk add --update --no-cache nodejs npm
 
 # ── Express 后端依赖(独立最小清单,避免把前端依赖装进镜像) ──
 WORKDIR /app
