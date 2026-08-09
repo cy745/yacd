@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────
+#  发布 yacd SPA 到 GitHub Pages 根路径
+#  (master/主分支推送时构建前端 → 推送到 gh-pages 分支根目录)
+#  docs/ 子目录由 release.yml 的 docs job 负责,二者互不冲突
+# ─────────────────────────────────────────────────────────────
+name: Publish SPA
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  publish-spa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2.4.0
+        with:
+          version: 8
+          run_install: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Build SPA
+        run: pnpm build
+
+      - name: Deploy to gh-pages (root)
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: public
+          branch: gh-pages
+          clean: true

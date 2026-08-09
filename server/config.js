@@ -5,7 +5,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import * as yaml from 'js-yaml';
 
-const MIHOMO_DIR = '/root/.config/mihomo';
+// 配置目录:默认为 mihomo 容器内路径,测试时可通过 MIHOMO_DIR 环境变量注入临时目录
+const MIHOMO_DIR = process.env.MIHOMO_DIR || '/root/.config/mihomo';
 const CONFIG_PATH = path.join(MIHOMO_DIR, 'config.yaml');
 const SUBSCRIPTION_PATH = path.join(MIHOMO_DIR, 'subscription.yaml');
 const META_PATH = path.join(MIHOMO_DIR, 'subscription-meta.json');

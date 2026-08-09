@@ -1,0 +1,139 @@
+# ─────────────────────────────────────────────────────────────
+#  yacd CI:PR/push 全量校验
+#  五阶段 DAG,快速反馈的并行前置:
+#    shell-test → (frontend, backend) → docker-build-test
+# ─────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── L1 shell 脚本测试(shellcheck + bats) ────────────────────
+  shell-test:
+    name: Shell (shellcheck + bats)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shellcheck 静态检查
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: error
+          ignore_paths: node_modules
+
+      - name: Bats 测试 CLI 派发
+        uses: bats-core/bats-action@2.2.0
+        with:
+          args: test/manage.bats test/cmd/up.bats
+
+  # ── L3 前端(lint + vitest + build) ──────────────────────────
+  frontend:
+    name: Frontend (lint + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2.4.0
+        with:
+          version: 8
+          run_install: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: 前端单测 (vitest)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: 上传构建产物(供 docker-build-test 使用)
+        uses: actions/upload-artifact@v4
+        with:
+          name: public
+          path: public/
+          retention-days: 1
+
+  # ── L4 后端(node:test + supertest) ──────────────────────────
+  backend:
+    name: Backend (node:test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装依赖
+        working-directory: server
+        run: npm ci
+
+      - name: 后端测试
+        working-directory: server
+        run: npm test
+
+  # ── L2+L5 镜像:hadolint + compose 校验 + 构建 + 冒烟 ────────
+  docker-build-test:
+    name: Docker (lint + build + smoke)
+    runs-on: ubuntu-latest
+    needs: [shell-test, frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载前端产物
+        uses: actions/download-artifact@v4
+        with:
+          name: public
+          path: public/
+
+      - name: Dockerfile lint (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile
+
+      - name: Compose 配置校验(生产)
+        working-directory: deploy
+        run: docker compose config --quiet
+
+      - name: Compose 配置校验(测试)
+        working-directory: docker
+        run: docker compose -f test-compose.yml config --quiet
+
+      - name: 构建镜像
+        run: docker build -t yacd-test:latest -f docker/Dockerfile .
+
+      - name: 冒烟测试(容器启动 + /api/status 可达)
+        run: |
+          docker run -d --name yacd-test-smoke \
+            --cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_ADMIN \
+            --device /dev/net/tun:/dev/net/tun \
+            -v yacd-test-smoke-vol:/root/.config/mihomo \
+            yacd-test:latest
+          # 轮询 /api/status(容器内 80 端口;mihomo 首次生成配置需数秒)
+          for i in $(seq 1 30); do
+            if docker exec yacd-test-smoke wget -qO- http://127.0.0.1:80/api/status 2>/dev/null | grep -q '"status":"ok"'; then
+              echo "SMOKE OK"
+              docker logs yacd-test-smoke 2>&1 | tail -5
+              docker rm -f yacd-test-smoke >/dev/null
+              docker volume rm yacd-test-smoke-vol >/dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "SMOKE FAILED"
+          docker logs yacd-test-smoke 2>&1 | tail -30
+          docker rm -f yacd-test-smoke >/dev/null || true
+          docker volume rm yacd-test-smoke-vol >/dev/null || true
+          exit 1

@@ -1,0 +1,30 @@
+# CI 冒烟测试专用编排
+# 用内置 bridge 网络替代生产环境的 external macvlan(CI 无 macvlan 父网卡),
+# 保留 /dev/net/tun 与命名卷,验证镜像可构建、容器可启动、/api/status 可达。
+
+services:
+  mihomo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: yacd-test:latest
+    container_name: yacd-test
+    restart: unless-stopped
+    # 内置 bridge:不需要 external 网络
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - mihomo-test:/root/.config/mihomo
+    environment:
+      - PORT=80
+      - MIHOMO_TARGET=http://127.0.0.1:9090
+    # 冒烟端口(仅测试容器间访问,不对外发布)
+    ports:
+      - "127.0.0.1:18080:80"
+
+volumes:
+  mihomo-test:
