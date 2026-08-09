@@ -19,7 +19,6 @@ case "$ans" in
       "${COMPOSE[@]}" down -v 2>/dev/null || docker rm -f "$CONTAINER_NAME" || true
     fi
     # 删除软链
-    local link
     link="$(command -v yacd 2>/dev/null || echo "")"
     if [ -n "$link" ] && [ -e "$link" ]; then
       rm -f "$link"

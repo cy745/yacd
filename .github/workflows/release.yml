@@ -25,13 +25,15 @@ jobs:
 
       - uses: pnpm/action-setup@v6.0.10
         with:
-          version: 8
-          run_install: true
+          version: 9
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
 
       - name: Set version
         id: version
@@ -126,18 +128,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v6.0.10
-        with:
-          version: 8
-          run_install: true
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+
+      # 文档站是独立 npm 依赖(docs/package.json),不用根 pnpm workspace
+      - name: 安装文档依赖
+        working-directory: docs
+        run: npm ci
 
       - name: Build docs
-        run: pnpm docs:build
+        working-directory: docs
+        run: npm run build
 
       - name: Deploy to gh-pages (docs/ subdir)
         uses: JamesIves/github-pages-deploy-action@v4
