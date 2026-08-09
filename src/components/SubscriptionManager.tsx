@@ -135,12 +135,21 @@ export default function SubscriptionManager() {
               </div>
               {status.proxyNames && status.proxyNames.length > 0 && (
                 <div>
-                  <span
-                    style={{ cursor: 'pointer', color: '#60a5fa', textDecoration: 'underline' }}
+                  <button
+                    type="button"
+                    style={{
+                      cursor: 'pointer',
+                      color: '#60a5fa',
+                      textDecoration: 'underline',
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: 'inherit',
+                    }}
                     onClick={() => setViewNodes(!viewNodes)}
                   >
                     {viewNodes ? '收起节点列表' : `查看节点列表 (${status.proxyNames.length}个)`}
-                  </span>
+                  </button>
                   {viewNodes && (
                     <div style={{ marginTop: 8, maxHeight: 200, overflowY: 'auto' }}>
                       {status.proxyNames.map((name) => (
@@ -159,10 +168,14 @@ export default function SubscriptionManager() {
 
       {/* URL 输入 */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500 }}>
+        <label
+          htmlFor="subscription-url"
+          style={{ display: 'block', marginBottom: 6, fontSize: 14, fontWeight: 500 }}
+        >
           订阅链接
         </label>
         <input
+          id="subscription-url"
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
