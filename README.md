@@ -17,7 +17,7 @@
 在部署机器(NAS / 任何有 Docker 的 Linux)上运行:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cy745/yacd/main/deploy/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/cy745/yacd/master/deploy/install.sh | sh
 ```
 
 安装后使用 `yacd` 命令:

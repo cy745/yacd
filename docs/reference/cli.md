@@ -5,7 +5,7 @@
 ## 安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cy745/yacd/main/deploy/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/cy745/yacd/master/deploy/install.sh | sh
 ```
 
 ## 命令总览

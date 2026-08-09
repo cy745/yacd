@@ -3,7 +3,7 @@
 #  yacd 一键安装 / 升级脚本(curl | sh 入口)
 #
 #  用法:
-#    curl -fsSL https://raw.githubusercontent.com/cy745/yacd/main/deploy/install.sh | sh
+#    curl -fsSL https://raw.githubusercontent.com/cy745/yacd/master/deploy/install.sh | sh
 #
 #  行为(幂等,重跑即升级):
 #    1. 确定安装目录(INSTALL_DIR):root 默认 /opt/yacd,非 root 默认 ~/.yacd
@@ -57,7 +57,7 @@ echo "=============================================="
 if [ "${YACD_USE_MAIN:-0}" = "1" ]; then
   echo "[1/4] 从 main 分支拉取源码..."
   TMP_TAR="$(mktemp -t yacd-main.XXXXXX.tar.gz)"
-  curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/main" \
+  curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/master" \
     || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
 else
   echo "[1/4] 解析最新 release..."
@@ -74,7 +74,7 @@ else
   else
     # 尚无 release(首次安装):降级到 main 分支源码,保证 curl|sh 可用
     echo "  (暂无 release,降级到 main 分支源码)"
-    curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/main" \
+    curl -fsSL -o "$TMP_TAR" "https://codeload.github.com/$REPO/tar.gz/refs/heads/master" \
       || { echo "错误:无法从 main 分支下载" >&2; exit 1; }
   fi
 fi

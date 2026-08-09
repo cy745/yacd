@@ -25,8 +25,8 @@ download_release() {
   local out="$1"
   local tag="" url_assets url_fallback
   if [ "${YACD_USE_MAIN:-0}" = "1" ]; then
-    url_assets="$RAW_BASE/main/deploy/yacd-release.tar.gz"
-    url_fallback="https://codeload.github.com/$REPO/tar.gz/refs/heads/main"
+    url_assets="$RAW_BASE/master/deploy/yacd-release.tar.gz"
+    url_fallback="https://codeload.github.com/$REPO/tar.gz/refs/heads/master"
     info "从 main 分支拉取: $url_assets"
   else
     tag="$(fetch_latest_tag)"

@@ -3,7 +3,7 @@
 在部署机器(如 UGreen NAS)上一键安装 yacd CLI:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/cy745/yacd/main/deploy/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/cy745/yacd/master/deploy/install.sh | sh
 ```
 
 安装后即可使用 `yacd` 命令管理旁路由代理网关。
