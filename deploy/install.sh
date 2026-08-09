@@ -94,7 +94,7 @@ fi
 rm -f "$TMP_TAR"
 
 # 确保脚本可执行(源码 tarball 可能丢可执行位)
-chmod +x "$INSTALL_DIR/deploy/manage.sh" "$INSTALL_DIR/deploy/install.sh" \
+chmod 755 "$INSTALL_DIR/deploy/manage.sh" "$INSTALL_DIR/deploy/install.sh" \
   "$INSTALL_DIR"/deploy/cmd/*.sh "$INSTALL_DIR"/deploy/lib/*.sh \
   "$INSTALL_DIR/docker/entrypoint.sh" 2>/dev/null || true
 

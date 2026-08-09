@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 
 # 权限自愈:源码 tarball 解压可能丢可执行位,确保子命令可被 exec 分发
 if ! find "$SCRIPT_DIR/cmd" -maxdepth 1 -name '*.sh' -perm -u+x -print -quit 2>/dev/null | grep -q .; then
-  chmod +x "$SCRIPT_PATH" "$SCRIPT_DIR"/cmd/*.sh "$SCRIPT_DIR"/lib/*.sh 2>/dev/null || true
+  chmod 755 "$SCRIPT_PATH" "$SCRIPT_DIR"/cmd/*.sh "$SCRIPT_DIR"/lib/*.sh 2>/dev/null || true
 fi
 
 # 读取版本(仅用于帮助文案;不 source utils.sh,避免 docker 探测等副作用)
