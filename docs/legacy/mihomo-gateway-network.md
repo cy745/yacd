@@ -178,8 +178,8 @@ docker logs yacd-mihomo 2>&1 | grep 192.168.3.101      # 关键!
 mihomo 日志会显示每个客户端 IP 的连接:
 
 ```
-[TCP] 192.168.3.101:41502 → 199.232.114.132:443  match Match using ⚓️其他流量[PRO|香港BGP VL06]  ← 走代理
-[TCP] 192.168.3.101:49870 → 120.226.74.152:80    match GeoIP(cn) using DIRECT                    ← 国内直连
+[TCP] 192.168.3.101:41502 → 199.232.114.132:443  match Match using ⚓️其他流量[海外节点]  ← 走代理
+[TCP] 192.168.3.101:49870 → 120.226.74.152:80    match GeoIP(cn) using DIRECT            ← 国内直连
 ```
 
 **看到自己的容器 IP 出现在 mihomo 日志里 = 链路通。**

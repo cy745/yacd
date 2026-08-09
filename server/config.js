@@ -104,7 +104,7 @@ export async function setSubscriptionProxy(proxy) {
  *  - 确保 `DOMAIN-SUFFIX,<订阅域名>,<目标>` 与 `IP-CIDR,<真实IP>/32,<目标>` 规则存在
  *  - 清理旧的 DIRECT 残留规则(此前版本注入的 `IP-CIDR,...,DIRECT` 与 `DOMAIN-KEYWORD,...,DIRECT`)
  *
- * 注意:订阅域名是 IP(如 47.76.218.52)时,走 TUN 后由 mihomo 按 IP-CIDR 规则分流到目标。
+ * 注意:订阅域名是 IP(如 <机场服务器 IP>)时,走 TUN 后由 mihomo 按 IP-CIDR 规则分流到目标。
  */
 async function ensureSubscriptionProxyRules(config, url, target) {
   if (!Array.isArray(config.rules)) return;

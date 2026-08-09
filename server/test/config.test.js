@@ -109,7 +109,7 @@ test('applySubscription 确保订阅域名走目标节点(非 DIRECT)', async ()
   // 设置 meta.url + proxyForSubscribe
   const { writeFileSync: w } = await import('node:fs');
   const metaPath = join(tmpDir, 'subscription-meta.json');
-  w(metaPath, JSON.stringify({ url: 'https://example.com/zaapi/sub', proxyForSubscribe: '订阅专用节点' }));
+  w(metaPath, JSON.stringify({ url: 'https://example.com/api/sub', proxyForSubscribe: '订阅专用节点' }));
 
   await applySubscription();
 

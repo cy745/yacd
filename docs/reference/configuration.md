@@ -62,6 +62,19 @@ dns:
 空卷首次启动时,mihomo 会使用镜像内置的种子配置(`docker/mihomo-seed.yaml`),
 包含最小可用的 TUN/DNS/external-controller 配置。之后通过面板导入订阅生成完整配置。
 
+## 订阅拉取代理
+
+部分机场的订阅 URL 需通过其**专用节点**代理拉取,才返回完整节点列表。
+
+- **设置位置**:yacd 面板「订阅管理 → 订阅拉取方式」下拉
+- **API**:`POST /api/subscription/proxy {"proxy": "节点名"}`
+- **持久化**:存于 `subscription-meta.json` 的 `proxyForSubscribe` 字段
+- **实现原理**:拉取订阅前,确保订阅域名/IP 的规则指向所选节点(非 DIRECT),
+  拉取走 mihomo TUN 分流;同时清理历史遗留的 DIRECT 规则
+- **直连恢复**:`{"proxy": null}` 或面板选"直连(默认)"
+
+> 若订阅返回的节点数异常少(几个占位节点),通常是未走专用节点拉取,见 [FAQ](/faq)。
+
 ## 网络拓扑相关
 
 macvlan 网络要求:

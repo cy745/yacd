@@ -85,11 +85,27 @@ yacd 自定义 API(Express,前缀 `/api`)。Mihomo 原生 API 见 [Mihomo 官方
 
 ### `POST /api/subscription/proxy`
 
-设置订阅拉取用的代理节点(绕过 TUN Fake-IP 抓取问题)。
+设置订阅拉取用的代理节点(部分机场需通过专用节点代理拉取,才返回完整节点列表)。
 
 **请求体**: `{ "proxy": "节点名" }`(或 `null` 表示直连)
 
 **返回**: `{ "ok": true, "proxy": "节点名" }`
+
+**示例**:
+```bash
+# 设置通过某节点拉取订阅
+curl -X POST http://<MIHOMO_IP>/api/subscription/proxy \
+  -H 'Content-Type: application/json' \
+  -d '{"proxy": "订阅专用节点"}'
+
+# 恢复直连拉取
+curl -X POST http://<MIHOMO_IP>/api/subscription/proxy \
+  -H 'Content-Type: application/json' \
+  -d '{"proxy": null}'
+```
+
+> 配置会持久化到 `subscription-meta.json`,之后的 `/api/subscribe` 拉取都会走该节点。
+> 也可在 yacd 面板「订阅管理 → 订阅拉取方式」下拉中设置。
 
 ## Mihomo 原生 API(经 Express 代理)
 
