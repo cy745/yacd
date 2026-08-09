@@ -22,7 +22,8 @@ else
     exit 1
   fi
   info "本地: $local_tag | 远端: $remote_tag"
-  if [ "$local_tag" = "$remote_tag" ] && [ -z "${YACD_FORCE_UPDATE:-}" ]; then
+  # 归一化版本号:本地 VERSION 无 v 前缀,远端 tag 有 v 前缀,去 v 后比较
+  if [ "${local_tag#v}" = "${remote_tag#v}" ] && [ -z "${YACD_FORCE_UPDATE:-}" ]; then
     ok "已是最新版本,无需更新"
     exit 0
   fi
