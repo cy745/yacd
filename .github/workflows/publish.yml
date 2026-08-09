@@ -41,3 +41,6 @@ jobs:
           folder: public
           branch: gh-pages
           clean: true
+          # 保留 docs/ 子目录(由 release.yml 的 docs job 维护,勿被 SPA 发布清空)
+          clean-exclude: |
+            docs
